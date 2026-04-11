@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通讯录查询</title>
+    <link rel="stylesheet" href="app.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>通讯录查询</h1>
+            <button class="import-btn" onclick="triggerFileInput()">
+                导入
+            </button>
+        </div>
+
+        <div class="search-section">
+            <input type="text" class="search-input" id="searchInput" placeholder="输入姓名、手机号或短号进行精确搜索...">
+            <button class="search-btn" onclick="searchContacts()">搜索</button>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <div class="empty-state" id="emptyState">
+                <div class="icon">📁</div>
+                <h2>暂无数据</h2>
+                <p>请点击右上角的"导入Excel文件"按钮导入通讯录数据</p>
+                <div class="hint">
+                    <strong>支持格式：</strong>.xlsx 或 .xls<br>
+                    <strong>必需字段：</strong>部门名称、姓名、邮箱、手机、短号、职位、性别、工号、入职时间、详细部门、公司
+                </div>
+            </div>
+            <div class="results-grid" id="resultsGrid"></div>
+        </div>
+    </div>
+
+    <!-- Modal for duplicates -->
+    <div class="modal-overlay" id="duplicateModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>⚠️ 发现重复数据</h2>
+                <button class="modal-close" onclick="closeModal('duplicateModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>导入过程中发现以下重复记录（工号或邮箱与已有数据重复）：</p>
+                <div class="duplicate-list" id="duplicateList"></div>
+                <p style="margin-top: 15px; color: #dc3545; font-weight: 600;">本次导入已中止，请手动处理源文件中的重复数据后重新导入。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn primary" onclick="closeModal('duplicateModal')">我知道了</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for import progress -->
+    <div class="modal-overlay" id="progressModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>📥 正在导入数据</h2>
+            </div>
+            <div class="modal-body">
+                <div class="import-progress">
+                    <div class="progress-text" id="progressText">正在解析文件...</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for import result -->
+    <div class="modal-overlay" id="resultModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="resultTitle">导入结果</h2>
+                <button class="modal-close" onclick="closeModal('resultModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="import-result" id="importResult"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn primary" onclick="closeModal('resultModal')">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
+
+    <!-- Scripts -->
+    <script src="libs/xlsx.full.min.js"></script>
+    <script src="libs/dexie.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

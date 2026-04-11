@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>时序图生成器 - 系统操作时间线工具</title>
+    <!-- 引入本地 Mermaid 核心库，支持离线使用 -->
+    <script src="mermaid.min.js"></script>
+    <!-- 引入本地 html2canvas 用于导出图片 -->
+    <script src="html2canvas.min.js"></script>
+    <link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="container">
+    <h1>
+        时序图生成器
+    </h1>
+    <div class="sub">输入时间点与系统操作 → 自动生成 Mermaid 时序图，展示处理流程与耗时间隔</div>
+
+    <div class="main-content">
+        <!-- 事件列表区 -->
+        <div class="input-panel">
+            <div style="font-weight: 600; margin-bottom: 8px;">事件列表 (每行一个事件)</div>
+            <div style="font-size: 0.75rem; color: #475569; margin-bottom: 8px;">
+                格式: <code>时间, 系统名称, 操作描述</code>  &nbsp; 时间格式 HH:MM:SS (24小时制)
+            </div>
+            <textarea id="eventInput" rows="8" placeholder='示例:
+17:56:03, 短信系统, 发送第154条短信
+18:15:00, 本地表, 插入
+18:17:29, 识别程序, 程序识别
+18:18:08, 关停系统, 送关停
+18:29:20, 关停系统, 实际关停'></textarea>
+            <button id="generateBtn" class="generate-btn">生成时序图</button>
+        </div>
+
+        <!-- 时序图预览区 -->
+        <div class="diagram-panel">
+            <div class="diagram-header">
+                <div class="header-left">
+                    <span class="diagram-title">时序图预览</span>
+                    <div class="tab-container">
+                        <button class="tab-btn active" data-tab="diagram">图表</button>
+                        <button class="tab-btn" data-tab="code">代码</button>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <div class="dropdown">
+                        <button class="dropbtn">下载</button>
+                        <div class="dropdown-content">
+                            <a id="exportPngBtn">导出 PNG</a>
+                            <a id="exportSvgBtn">导出 SVG</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 图表内容 -->
+            <div id="diagramTab" class="tab-content active">
+                <div id="mermaid-container">
+                    <div id="mermaid-diagram" style="text-align: center; min-height: 380px; display: flex; align-items: center; justify-content: center;">
+                        点击「生成时序图」
+                    </div>
+                </div>
+            </div>
+
+            <!-- 代码内容 -->
+            <div id="codeTab" class="tab-content">
+                <textarea id="mermaidCodeEditor" placeholder="生成Mermaid代码后将显示在这里..."></textarea>
+            </div>
+
+            <div id="errorMsg" class="error-msg" style="display: none;"></div>
+            <div id="statsInfo" class="info-stats" style="margin-top: 16px;">
+                📈 总耗时: --  |  事件数量: --
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    <script src="app.js"></script>
+</body>
+</html>

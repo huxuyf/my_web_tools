@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>终端使用时间甘特图</title>
+    <link rel="stylesheet" href="app.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>终端使用时间甘特图</h1>
+            <p>可视化展示终端使用时间范围 (离线版本)</p>
+        </div>
+
+        <div class="content">
+            <div class="input-section">
+                <h2>数据输入</h2>
+
+                <div class="error-message" id="error_message"></div>
+
+                <div class="input-group">
+                    <textarea id="data_input" placeholder="终端A：2025-12-03至2025-12-21
+终端B：2025-11-09至2025-12-06
+终端C：2025-08-23至2025-11-06"></textarea>
+                </div>
+
+
+                <div class="button-group" style="margin-top: 15px;">
+                    <button class="btn btn-primary" onclick="generateGantt()">生成甘特图</button>
+                </div>
+            </div>
+
+            <div class="gantt-section">
+                <h2>甘特图展示</h2>
+                <div id="gantt_container"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <!-- 使用本地DHTMLX库 (离线版本) -->
+    <script src="dhtmlxgantt/codebase/dhtmlxgantt.js"></script>
+    <link rel="stylesheet" href="dhtmlxgantt/codebase/dhtmlxgantt.css">
+
+    
+    <script src="app.js"></script>
+</body>
+</html>

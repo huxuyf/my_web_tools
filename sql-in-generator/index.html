@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL IN子句组合</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 25px;
+        }
+
+        .info-section {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .info-section h3 {
+            color: #1565C0;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .info-section p {
+            color: #555;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .example-section {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .example-section h3 {
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .example-section .example-box {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        .example-item {
+            flex: 1;
+        }
+
+        .example-item h4 {
+            color: #856404;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .example-item pre {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #333;
+            overflow-x: auto;
+        }
+
+        .main-section {
+            margin-bottom: 20px;
+        }
+
+        .text-panel {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .panel-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-copy {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-copy:hover {
+            background: #45a049;
+        }
+
+        textarea {
+            width: 100%;
+            height: 500px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .convert-section {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .btn-convert {
+            padding: 15px 50px;
+            font-size: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .btn-convert:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .settings-section {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .settings-section h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .settings-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .settings-row label {
+            color: #555;
+            font-size: 14px;
+            min-width: 120px;
+        }
+
+        .settings-row input[type="text"] {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 200px;
+        }
+
+        .settings-row input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .settings-row select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 200px;
+            background: white;
+        }
+
+        .settings-row select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        @media (max-width: 1200px) {
+            textarea {
+                height: 400px;
+            }
+
+            .example-section .example-box {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SQL IN子句组合</h1>
+            <p>将一列文字快速拼接成SQL IN语句格式</p>
+        </div>
+
+        <div class="content">
+            <!-- <div class="settings-section">
+                <h3>配置选项</h3>
+                <div class="settings-row">
+                    <label>引号类型：</label>
+                    <select id="quoteType">
+                        <option value="single">单引号 (')</option>
+                        <option value="double">双引号 (")</option>
+                        <option value="none">无引号</option>
+                    </select>
+                </div>
+                <div class="settings-row">
+                    <label>分隔符：</label>
+                    <select id="separator">
+                        <option value="comma">逗号 (,)</option>
+                        <option value="semicolon">分号 (;)</option>
+                        <option value="space">空格</option>
+                        <option value="newline">换行</option>
+                    </select>
+                </div>
+                <div class="settings-row">
+                    <label>添加括号：</label>
+                    <select id="addBrackets">
+                        <option value="yes">是 (value1,value2)</option>
+                        <option value="no">否</option>
+                    </select>
+                </div>
+                <div class="settings-row">
+                    <label>前缀：</label>
+                    <input type="text" id="prefix" value="" placeholder="例如：IN ">
+                </div>
+                <div class="settings-row">
+                    <label>后缀：</label>
+                    <input type="text" id="suffix" value="" placeholder="例如：;">
+                </select>
+                </div>
+            </div> -->
+
+            <div class="main-section">
+                <div class="text-panel">
+                    <div class="panel-header">
+                        <span class="panel-title">文字内容</span>
+                        <div class="panel-actions">
+                            <button class="btn btn-secondary" onclick="clearInput()">清空</button>
+                            <button class="btn btn-secondary" onclick="pasteFromClipboard()">粘贴</button>
+                            <button class="btn btn-copy" onclick="copyToClipboard()">复制</button>
+                        </div>
+                    </div>
+                    <textarea id="inputData" placeholder="请在此处粘贴文字，例如：
+1
+2
+3
+或
+张三
+李四
+王五
+
+点击"拼接"按钮后，结果将覆盖此处内容"></textarea>
+                </div>
+            </div>
+
+            <div class="convert-section">
+                <button class="btn-convert" onclick="joinText()">拼接</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">已复制到剪贴板！</div>
+
+    <script>
+        // 清空输入
+        function clearInput() {
+            if (confirm('确定要清空内容吗？')) {
+                document.getElementById('inputData').value = '';
+            }
+        }
+
+        // 从剪贴板粘贴
+        async function pasteFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('inputData').value = text;
+                showToast('已从剪贴板粘贴！');
+            } catch (err) {
+                alert('无法访问剪贴板，请手动粘贴数据。');
+            }
+        }
+
+        // 复制到剪贴板
+        function copyToClipboard() {
+            const outputText = document.getElementById('inputData').value;
+            if (outputText.trim() === '') {
+                alert('没有可复制的内容，请先输入或拼接文字！');
+                return;
+            }
+
+            navigator.clipboard.writeText(outputText).then(function() {
+                showToast('已复制到剪贴板！');
+            }).catch(function(err) {
+                // 如果现代API失败，使用传统方法
+                const textarea = document.getElementById('inputData');
+                textarea.select();
+                document.execCommand('copy');
+                showToast('已复制到剪贴板！');
+            });
+        }
+
+        // 显示提示
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(function() {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // 拼接文字
+        function joinText() {
+            const inputText = document.getElementById('inputData').value;
+            const quoteType = document.getElementById('quoteType').value;
+            const separator = document.getElementById('separator').value;
+            const addBrackets = document.getElementById('addBrackets').value;
+            const prefix = document.getElementById('prefix').value;
+            const suffix = document.getElementById('suffix').value;
+
+            if (!inputText.trim()) {
+                alert('请输入文字！');
+                return;
+            }
+
+            // 分割行，去除空行和空白字符
+            const lines = inputText.split(/\r?\n/)
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+
+            if (lines.length === 0) {
+                alert('没有有效的文字！');
+                return;
+            }
+
+            // 确定引号
+            let quote = '';
+            if (quoteType === 'single') {
+                quote = "'";
+            } else if (quoteType === 'double') {
+                quote = '"';
+            }
+
+            // 确定分隔符
+            let sep = '';
+            if (separator === 'comma') {
+                sep = ',';
+            } else if (separator === 'semicolon') {
+                sep = ';';
+            } else if (separator === 'space') {
+                sep = ' ';
+            } else if (separator === 'newline') {
+                sep = '\n';
+            }
+
+            // 拼接文字
+            const joinedText = lines.map(line => quote + line + quote).join(sep);
+
+            // 添加括号
+            let result = joinedText;
+            if (addBrackets === 'yes') {
+                result = '(' + result + ')';
+            }
+
+            // 添加前缀和后缀
+            if (prefix) {
+                result = prefix + result;
+            }
+            if (suffix) {
+                result = result + suffix;
+            }
+
+            // 显示结果（覆盖输入框内容）
+            document.getElementById('inputData').value = result;
+            showToast('拼接完成！');
+        }
+    </script>
+</body>
+</html>

@@ -1,33 +1,6 @@
 // 最大行数限制
 const MAX_LINES = 1000;
 
-// 页面加载完成后初始化
-document.addEventListener('DOMContentLoaded', function() {
-    // 监听文本输入变化，更新行数统计
-    document.getElementById('textInput').addEventListener('input', updateLineCount);
-
-    // 初始化行数统计
-    updateLineCount();
-});
-
-// 更新行数统计
-function updateLineCount() {
-    const text = document.getElementById('textInput').value;
-    const lines = text.split('\n');
-    const lineCount = lines.length;
-
-    const lineInfo = document.getElementById('lineInfo');
-    
-    // 检查元素是否存在
-    if (lineInfo) {
-        if (lineCount > MAX_LINES) {
-            lineInfo.innerHTML = `行数: ${lineCount} <span style="color: #dc3545;">(超过限制，仅处理前${MAX_LINES}行)</span>`;
-        } else {
-            lineInfo.textContent = `行数: ${lineCount}`;
-        }
-    }
-}
-
 // 文本转表格核心函数
 function convertToTable(text, columns) {
     // 1. 按行分割，保留空行
@@ -93,9 +66,6 @@ function convertText() {
         // 更新文本框内容
         document.getElementById('textInput').value = result;
 
-        // 更新行数统计
-        updateLineCount();
-
         // 显示成功提示
         showToast('转换成功');
     } catch (error) {
@@ -148,9 +118,6 @@ function clearAll() {
 
     // 重置列数为默认值2
     document.getElementById('columnCount').value = 2;
-
-    // 更新行数统计
-    updateLineCount();
 
     // 显示提示
     showToast('已清空所有内容');

@@ -62,8 +62,19 @@
         // 转换为SQL
         function convertToSql() {
             const inputText = document.getElementById('inputData').value.trim();
-            const tableName = document.getElementById('tableName').value.trim() || 'TMP_IMP_DATA';
-            const splitLineNum = parseInt(document.getElementById('splitLineNum').value) || 1000;
+            let tableName = 'TMP_IMP_DATA';
+            let splitLineNum = 1000;
+            
+            // 检查元素是否存在
+            const tableNameElement = document.getElementById('tableName');
+            if (tableNameElement) {
+                tableName = tableNameElement.value.trim() || 'TMP_IMP_DATA';
+            }
+            
+            const splitLineNumElement = document.getElementById('splitLineNum');
+            if (splitLineNumElement) {
+                splitLineNum = parseInt(splitLineNumElement.value) || 1000;
+            }
 
             if (!inputText) {
                 alert('请输入数据！');

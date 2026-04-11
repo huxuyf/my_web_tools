@@ -17,11 +17,14 @@ function updateLineCount() {
     const lineCount = lines.length;
 
     const lineInfo = document.getElementById('lineInfo');
-
-    if (lineCount > MAX_LINES) {
-        lineInfo.innerHTML = `行数: ${lineCount} <span style="color: #dc3545;">(超过限制，仅处理前${MAX_LINES}行)</span>`;
-    } else {
-        lineInfo.textContent = `行数: ${lineCount}`;
+    
+    // 检查元素是否存在
+    if (lineInfo) {
+        if (lineCount > MAX_LINES) {
+            lineInfo.innerHTML = `行数: ${lineCount} <span style="color: #dc3545;">(超过限制，仅处理前${MAX_LINES}行)</span>`;
+        } else {
+            lineInfo.textContent = `行数: ${lineCount}`;
+        }
     }
 }
 
@@ -154,28 +157,18 @@ function clearAll() {
 }
 
 // 显示提示信息
-function showToast(message) {
-    // 移除现有的toast
-    const existingToast = document.querySelector('.toast');
-    if (existingToast) {
-        existingToast.remove();
-    }
-
-    // 创建新的toast
-    const toast = document.createElement('div');
-    toast.className = 'toast';
+function showToast(message, duration = 2000) {
+    const toast = document.getElementById('toast');
     toast.textContent = message;
-    document.body.appendChild(toast);
+    toast.style.display = 'block';
+    toast.classList.remove('fade-out');
 
-    // 2秒后自动消失
     setTimeout(() => {
         toast.classList.add('fade-out');
         setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
+            toast.style.display = 'none';
         }, 300);
-    }, 2000);
+    }, duration);
 }
 
 // 支持Ctrl+Enter快捷键转换
@@ -184,61 +177,3 @@ document.addEventListener('keydown', function(e) {
         convertText();
     }
 });
-
-
-// 显示Toast提示
-        function showToast(message, duration = 2000) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.style.display = 'block';
-            toast.classList.remove('fade-out');
-
-            setTimeout(() => {
-                toast.classList.add('fade-out');
-                setTimeout(() => {
-                    toast.style.display = 'none';
-                }, 300);
-            }, duration);
-        }
-
-        // 清空所有内容
-        function clearAll() {
-            document.getElementById('textInput').value = '';
-            updateLineCount();
-            showToast('已清空所有内容');
-        }
-
-        // 复制结果
-        function copyResult() {
-            const textarea = document.getElementById('textInput');
-            textarea.select();
-            textarea.setSelectionRange(0, 99999); // 兼容移动端
-
-            try {
-                navigator.clipboard.writeText(textarea.value).then(() => {
-                    showToast('已复制到剪贴板！');
-                }).catch(() => {
-                    // 降级方案
-                    document.execCommand('copy');
-                    showToast('已复制到剪贴板！');
-                });
-            } catch (err) {
-                showToast('复制失败，请手动复制');
-            }
-        }
-
-        // 转换文本
-        function convertText() {
-            const text = document.getElementById('textInput').value;
-            const columns = parseInt(document.getElementById('columnCount').value) || 2;
-
-            if (!text.trim()) {
-                showToast('请输入文本内容');
-                return;
-            }
-
-            const result = convertToTable(text, columns);
-            document.getElementById('textInput').value = result;
-            updateLineCount();
-            showToast(`转换完成！共${result.split('\n').length}行`);
-        }

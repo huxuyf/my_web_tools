@@ -424,11 +424,37 @@
         // 拼接文字
         function joinText() {
             const inputText = document.getElementById('inputData').value;
-            const quoteType = document.getElementById('quoteType').value;
-            const separator = document.getElementById('separator').value;
-            const addBrackets = document.getElementById('addBrackets').value;
-            const prefix = document.getElementById('prefix').value;
-            const suffix = document.getElementById('suffix').value;
+            let quoteType = 'single';
+            let separator = 'comma';
+            let addBrackets = 'yes';
+            let prefix = '';
+            let suffix = '';
+            
+            // 检查元素是否存在
+            const quoteTypeElement = document.getElementById('quoteType');
+            if (quoteTypeElement) {
+                quoteType = quoteTypeElement.value;
+            }
+            
+            const separatorElement = document.getElementById('separator');
+            if (separatorElement) {
+                separator = separatorElement.value;
+            }
+            
+            const addBracketsElement = document.getElementById('addBrackets');
+            if (addBracketsElement) {
+                addBrackets = addBracketsElement.value;
+            }
+            
+            const prefixElement = document.getElementById('prefix');
+            if (prefixElement) {
+                prefix = prefixElement.value;
+            }
+            
+            const suffixElement = document.getElementById('suffix');
+            if (suffixElement) {
+                suffix = suffixElement.value;
+            }
 
             if (!inputText.trim()) {
                 alert('请输入文字！');

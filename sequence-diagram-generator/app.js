@@ -178,7 +178,7 @@
             return true;
         } catch (err) {
             console.error(err);
-            mermaidContainer.innerHTML = `<div style="color:#b91c1c; background:#fee2e2; padding:20px; border-radius:16px;">❌ 渲染错误: ${err.message}<br><pre style="font-size:11px; margin-top:8px;">${escapeHtml(mermaidCode.substring(0, 800))}</pre></div>`;
+            mermaidContainer.innerHTML = `<div style="color:#b91c1c; background:#fee2e2; padding:20px; border-radius:16px;">❌ 渲染错误: ${escapeHtml(err.message)}<br><pre style="font-size:11px; margin-top:8px;">${escapeHtml(mermaidCode.substring(0, 800))}</pre></div>`;
             return false;
         }
     }
@@ -346,14 +346,17 @@
     exportPngBtn.addEventListener('click', exportAsImage);
     exportSvgBtn.addEventListener('click', exportAsSVG);
 
-    // 编辑器输入事件（防抖）
+    // 编辑器输入事件（防抖；等待渲染完成后再复位标志，避免与"生成"按钮产生竞态）
     let editorTimeout;
     mermaidCodeEditor.addEventListener('input', () => {
         clearTimeout(editorTimeout);
-        editorTimeout = setTimeout(() => {
+        editorTimeout = setTimeout(async () => {
             updateFromEditor = true;
-            renderFromEditor();
-            updateFromEditor = false;
+            try {
+                await renderFromEditor();
+            } finally {
+                updateFromEditor = false;
+            }
         }, 800);
     });
 

@@ -97,7 +97,7 @@
                             const endDate = gantt.date.date_to_str("%Y-%m-%d")(task.end_date);
 
                             tooltip.innerHTML = `
-                                <strong>${task.text}</strong><br>
+                                <strong>${escapeHtml(task.text)}</strong><br>
                                 ${startDate}至${endDate}
                             `;
                             tooltip.style.display = 'block';
@@ -130,12 +130,20 @@
             return diffDays;
         }
 
+        // HTML 转义：任务名称来自用户输入，拼入 tooltip 前必须转义
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+            });
+        }
+
         // 解析输入数据
         function parseInputData(inputText) {
             const lines = inputText.trim().split('\n');
             const tasks = [];
             let minDate = null;
             let maxDate = null;
+            let skippedLines = 0;
 
             lines.forEach((line, index) => {
                 line = line.trim();
@@ -147,7 +155,12 @@
                     parts = line.split(/\s+/);
                 }
 
-                if (parts.length >= 2) {
+                if (parts.length < 2) {
+                    skippedLines++;
+                    return;
+                }
+
+                {
                     const terminalName = parts[0].trim();
                     const datePart = parts.slice(1).join('').trim();
 
@@ -161,7 +174,12 @@
                     // 注意: - 需要转义或放在字符类开头/结尾
                     let dateRange = datePart.split(/至|to|TO/);
 
-                    if (dateRange.length >= 2) {
+                    if (dateRange.length < 2) {
+                        skippedLines++;
+                        return;
+                    }
+
+                    {
                         const startDateStr = dateRange[0].trim();
                         const endDateStr = dateRange[1].trim();
 
@@ -200,12 +218,14 @@
                                 color: color,
                                 progress: 0
                             });
+                        } else {
+                            skippedLines++;
                         }
                     }
                 }
             });
 
-            return { tasks, minDate, maxDate };
+            return { tasks, minDate, maxDate, skippedLines };
         }
 
         // 生成甘特图
@@ -220,7 +240,7 @@
                 return;
             }
 
-            const { tasks, minDate, maxDate } = parseInputData(inputText);
+            const { tasks, minDate, maxDate, skippedLines } = parseInputData(inputText);
             console.log('解析到的任务数据:', tasks);
             console.log('最小日期:', minDate);
             console.log('最大日期:', maxDate);
@@ -231,7 +251,13 @@
                 return;
             }
 
-            errorMessage.style.display = 'none';
+            if (skippedLines > 0) {
+                // 非阻断提示：部分行无法解析时明确告知，而不是静默丢弃
+                errorMessage.textContent = `提示：有 ${skippedLines} 行数据无法解析，已被跳过`;
+                errorMessage.style.display = 'block';
+            } else {
+                errorMessage.style.display = 'none';
+            }
 
             // 设置甘特图时间范围
             if (minDate && maxDate) {

@@ -30,8 +30,11 @@
                 // 如果现代API失败，使用传统方法
                 const textarea = document.getElementById('inputData');
                 textarea.select();
-                document.execCommand('copy');
-                showToast('已复制到剪贴板！');
+                if (document.execCommand('copy')) {
+                    showToast('已复制到剪贴板！');
+                } else {
+                    showToast('复制失败，请手动复制');
+                }
             });
         }
 
@@ -77,6 +80,11 @@
                 quote = '"';
             }
 
+            // 单引号包裹时须转义内容中的单引号，否则会破坏 SQL 语法（如 O'Brien）
+            const escapeForSql = quoteType === 'single'
+                ? line => line.replace(/'/g, "''")
+                : line => line;
+
             // 确定分隔符
             let sep = '';
             if (separator === 'comma') {
@@ -90,7 +98,7 @@
             }
 
             // 拼接文字
-            const joinedText = lines.map(line => quote + line + quote).join(sep);
+            const joinedText = lines.map(line => quote + escapeForSql(line) + quote).join(sep);
 
             // 添加括号
             let result = joinedText;

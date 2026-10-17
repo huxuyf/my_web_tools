@@ -245,6 +245,14 @@
             </div>
             
             <div class="menu-list">
+                <div class="menu-item" onclick="showHome()">
+                    <div class="menu-icon">🏠</div>
+                    <div class="menu-info">
+                        <div class="menu-title">首页</div>
+                        <div class="menu-description">返回欢迎页</div>
+                    </div>
+                </div>
+
                 <div class="menu-item" onclick="openTool('terminal-gantt/index.html', '终端使用时间甘特图')">
                     <div class="menu-icon">📅</div>
                     <div class="menu-info">
@@ -346,13 +354,25 @@
     </div>
 
     <script>
-        function openTool(url, title) {
-            // 更新标题
-            // document.getElementById('content-title').textContent = title;
+        // 捕获欢迎页 HTML，供"首页"菜单恢复使用
+        const welcomeHTML = document.getElementById('content-frame').innerHTML;
 
-            // 更新内容区域
+        function showHome() {
             const contentFrame = document.getElementById('content-frame');
-            contentFrame.innerHTML = `<iframe src="${url}" title="${title}"></iframe>`;
+            contentFrame.innerHTML = welcomeHTML;
+
+            // 清除菜单激活状态
+            const menuItems = document.querySelectorAll('.menu-item');
+            menuItems.forEach(item => item.classList.remove('active'));
+        }
+
+        function openTool(url, title) {
+            // 更新内容区域：用 DOM API 创建 iframe，不拼 HTML 字符串
+            const contentFrame = document.getElementById('content-frame');
+            const frame = document.createElement('iframe');
+            frame.src = url;
+            frame.title = title;
+            contentFrame.replaceChildren(frame);
 
             // 更新菜单项的激活状态
             const menuItems = document.querySelectorAll('.menu-item');

@@ -6,6 +6,13 @@ db.version(1).stores({
     contacts: '++id, name, email, phone, shortPhone, employeeId, department'
 });
 
+// HTML 转义：Excel 数据属于外部输入，任何拼入页面 HTML 的值都必须先转义（防 XSS 与结构破坏）
+function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+    });
+}
+
 // 字段映射配置
 const fieldMapping = {
     '部门名称': 'department',
@@ -20,6 +27,9 @@ const fieldMapping = {
     '详细部门': 'detailDepartment',
     '公司': 'company'
 };
+
+// 暂存发现重复时的待导入数据，供"跳过重复项并导入其余"使用
+let pendingImport = null;
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', async function() {
@@ -103,8 +113,8 @@ async function importExcelFile(file) {
 
                 updateProgress(`正在处理 ${rows.length} 条记录...`, 50);
 
-                // 验证必需字段
-                const requiredFields = Object.keys(fieldMapping);
+                // 验证必需字段：只强制要求搜索功能实际依赖的列，其余列存在才导入
+                const requiredFields = ['姓名', '手机'];
                 const missingFields = requiredFields.filter(field => !headers.includes(field));
 
                 if (missingFields.length > 0) {
@@ -137,41 +147,52 @@ async function importExcelFile(file) {
 
                 updateProgress('正在检查重复数据...', 80);
 
-                // 检查重复数据
+                // 查重范围：① 与库内已有数据重复 ② 本次文件内部重复
+                // 用 Map/Set 做 O(1) 查找，避免对每条记录全量扫描
                 const duplicates = [];
+                const duplicateIndexes = new Set();
                 const existingContacts = await db.contacts.toArray();
+                const existingEmpMap = new Map(
+                    existingContacts.filter(c => c.employeeId).map(c => [c.employeeId, c.name])
+                );
+                const existingEmailMap = new Map(
+                    existingContacts.filter(c => c.email).map(c => [c.email, c.name])
+                );
+                const seenEmployeeIds = new Set();
+                const seenEmails = new Set();
 
-                for (const contact of contacts) {
-                    // 检查工号重复
+                contacts.forEach((contact, idx) => {
+                    let dup = null;
+
                     if (contact.employeeId) {
-                        const duplicateByEmployeeId = existingContacts.find(c => c.employeeId === contact.employeeId);
-                        if (duplicateByEmployeeId) {
-                            duplicates.push({
-                                type: '工号',
-                                value: contact.employeeId,
-                                name: contact.name,
-                                existingName: duplicateByEmployeeId.name
-                            });
-                            continue;
+                        if (existingEmpMap.has(contact.employeeId)) {
+                            dup = { type: '工号（库内已存在）', value: contact.employeeId, name: contact.name, existingName: existingEmpMap.get(contact.employeeId) || '' };
+                        } else if (seenEmployeeIds.has(contact.employeeId)) {
+                            dup = { type: '工号（文件内重复）', value: contact.employeeId, name: contact.name, existingName: '' };
                         }
+                        seenEmployeeIds.add(contact.employeeId);
                     }
 
-                    // 检查邮箱重复
-                    if (contact.email) {
-                        const duplicateByEmail = existingContacts.find(c => c.email === contact.email);
-                        if (duplicateByEmail) {
-                            duplicates.push({
-                                type: '邮箱',
-                                value: contact.email,
-                                name: contact.name,
-                                existingName: duplicateByEmail.name
-                            });
+                    if (!dup && contact.email) {
+                        if (existingEmailMap.has(contact.email)) {
+                            dup = { type: '邮箱（库内已存在）', value: contact.email, name: contact.name, existingName: existingEmailMap.get(contact.email) || '' };
+                        } else if (seenEmails.has(contact.email)) {
+                            dup = { type: '邮箱（文件内重复）', value: contact.email, name: contact.name, existingName: '' };
                         }
                     }
-                }
+                    if (contact.email) {
+                        seenEmails.add(contact.email);
+                    }
+
+                    if (dup) {
+                        duplicates.push(dup);
+                        duplicateIndexes.add(idx);
+                    }
+                });
 
                 if (duplicates.length > 0) {
-                    // 显示重复数据对话框
+                    // 暂存待导入数据，由用户在弹窗中选择"全部放弃"或"跳过重复项导入其余"
+                    pendingImport = { contacts, duplicateIndexes };
                     showDuplicateModal(duplicates);
                     closeModal('progressModal');
                     return;
@@ -227,7 +248,7 @@ function updateProgress(text, percentage) {
     document.getElementById('progressFill').style.width = percentage + '%';
 }
 
-// 显示重复数据对话框
+// 显示重复数据对话框（使用 DOM API 构建，避免外部数据拼入 HTML）
 function showDuplicateModal(duplicates) {
     const duplicateList = document.getElementById('duplicateList');
     duplicateList.innerHTML = '';
@@ -238,10 +259,18 @@ function showDuplicateModal(duplicates) {
     displayDuplicates.forEach(duplicate => {
         const item = document.createElement('div');
         item.className = 'duplicate-item';
-        item.innerHTML = `
-            <span class="duplicate-field">${duplicate.type}：${duplicate.value}</span><br>
-            新记录：${duplicate.name} | 已存在：${duplicate.existingName}
-        `;
+
+        const fieldSpan = document.createElement('span');
+        fieldSpan.className = 'duplicate-field';
+        fieldSpan.textContent = `${duplicate.type}：${duplicate.value}`;
+        item.appendChild(fieldSpan);
+        item.appendChild(document.createElement('br'));
+
+        let summary = `新记录：${duplicate.name || '（空）'}`;
+        if (duplicate.existingName) {
+            summary += ` | 已存在：${duplicate.existingName}`;
+        }
+        item.appendChild(document.createTextNode(summary));
         duplicateList.appendChild(item);
     });
 
@@ -257,6 +286,48 @@ function showDuplicateModal(duplicates) {
     showModal('duplicateModal');
 }
 
+// 用户选择"跳过重复项并导入其余"：导入未重复的记录（导入语义为整体替换现有数据库）
+async function importSkippingDuplicates() {
+    if (!pendingImport) {
+        closeModal('duplicateModal');
+        return;
+    }
+    const { contacts, duplicateIndexes } = pendingImport;
+    pendingImport = null;
+    closeModal('duplicateModal');
+
+    const validContacts = contacts.filter((_, idx) => !duplicateIndexes.has(idx));
+    if (validContacts.length === 0) {
+        showImportResult(false, '导入失败', '所有记录均为重复数据，无可导入内容', { success: 0, failed: 0, duplicates: [] });
+        return;
+    }
+
+    showModal('progressModal');
+    updateProgress('正在保存数据...', 90);
+
+    try {
+        await db.contacts.clear();
+        await db.contacts.bulkAdd(validContacts);
+
+        updateProgress('导入完成！', 100);
+        document.getElementById('emptyState').style.display = 'none';
+
+        setTimeout(() => {
+            closeModal('progressModal');
+            showImportResult(true, '导入成功', `已跳过 ${duplicateIndexes.size} 条重复记录`, {
+                success: validContacts.length,
+                failed: 0,
+                duplicates: []
+            });
+            clearResults();
+        }, 500);
+    } catch (error) {
+        console.error('导入错误:', error);
+        closeModal('progressModal');
+        showImportResult(false, '导入失败', error.message, { success: 0, failed: 0, duplicates: [] });
+    }
+}
+
 // 显示导入结果对话框
 function showImportResult(success, title, message, stats) {
     const resultDiv = document.getElementById('importResult');
@@ -268,8 +339,8 @@ function showImportResult(success, title, message, stats) {
         resultDiv.className = 'import-result result-success';
         resultDiv.innerHTML = `
             <div class="result-icon">✅</div>
-            <h3>${title}</h3>
-            <p>${message}</p>
+            <h3>${escapeHtml(title)}</h3>
+            <p>${escapeHtml(message)}</p>
             <div class="result-stats">
                 <div class="stat-row">
                     <span class="stat-label">成功导入</span>
@@ -285,8 +356,8 @@ function showImportResult(success, title, message, stats) {
         resultDiv.className = 'import-result result-error';
         resultDiv.innerHTML = `
             <div class="result-icon">❌</div>
-            <h3>${title}</h3>
-            <p>${message}</p>
+            <h3>${escapeHtml(title)}</h3>
+            <p>${escapeHtml(message)}</p>
             <div class="result-stats">
                 <div class="stat-row">
                     <span class="stat-label">成功导入</span>
@@ -345,7 +416,7 @@ async function searchContacts() {
             <div class="no-results" style="grid-column: 1 / -1;">
                 <div class="icon">❌</div>
                 <h3>搜索出错</h3>
-                <p>${error.message}</p>
+                <p>${escapeHtml(error.message)}</p>
             </div>
         `;
     }
@@ -365,6 +436,56 @@ function displayContacts(contacts) {
     document.getElementById('emptyState').style.display = 'none';
 }
 
+// 字段图标映射（模块级，供 buildInfoRow 使用）
+const fieldIcons = {
+    department: '🏢',
+    name: '👤',
+    email: '📧',
+    phone: '📱',
+    shortPhone: '📞',
+    position: '💼',
+    gender: '⚧',
+    employeeId: '🆔',
+    hireDate: '📅',
+    detailDepartment: '📍',
+    company: '🏢'
+};
+
+// 字段标签映射
+const fieldLabels = {
+    department: '部门',
+    name: '姓名',
+    email: '邮箱',
+    phone: '手机',
+    shortPhone: '短号',
+    position: '职位',
+    gender: '性别',
+    employeeId: '工号',
+    hireDate: '入职时间',
+    detailDepartment: '详细部门',
+    company: '公司'
+};
+
+// 构建单个信息行：值全部转义，可复制字段用 data-copy 属性 + 事件委托，不再拼内联 onclick
+function buildInfoRow(field, rawValue, fullWidth = false) {
+    const value = rawValue || '';
+    const isEmpty = !value;
+    const isClickable = (field === 'phone' || field === 'email') && !isEmpty;
+    const widthClass = fullWidth ? ' full-width' : '';
+    const emptyClass = isEmpty ? ' empty' : '';
+    const clickClass = isClickable ? ' clickable' : '';
+    const copyAttr = isClickable ? ` data-copy="${escapeHtml(value)}"` : '';
+    const displayText = isEmpty ? '（未填写）' : escapeHtml(value);
+
+    return `
+        <div class="info-row${widthClass}">
+            <span class="info-icon">${fieldIcons[field]}</span>
+            <span class="info-label">${fieldLabels[field]}:</span>
+            <span class="info-value${emptyClass}${clickClass}"${copyAttr}>${displayText}</span>
+        </div>
+    `;
+}
+
 // 创建联系人卡片
 function createContactCard(contact, index) {
     const card = document.createElement('div');
@@ -372,36 +493,6 @@ function createContactCard(contact, index) {
 
     // 获取姓名的首字符作为头像
     const avatarChar = contact.name ? contact.name.charAt(0) : '?';
-
-    // 字段图标映射
-    const fieldIcons = {
-        department: '🏢',
-        name: '👤',
-        email: '📧',
-        phone: '📱',
-        shortPhone: '📞',
-        position: '💼',
-        gender: '⚧',
-        employeeId: '🆔',
-        hireDate: '📅',
-        detailDepartment: '📍',
-        company: '🏢'
-    };
-
-    // 字段标签映射
-    const fieldLabels = {
-        department: '部门',
-        name: '姓名',
-        email: '邮箱',
-        phone: '手机',
-        shortPhone: '短号',
-        position: '职位',
-        gender: '性别',
-        employeeId: '工号',
-        hireDate: '入职时间',
-        detailDepartment: '详细部门',
-        company: '公司'
-    };
 
     // 生成信息行（按指定顺序排列）
     const fieldGroups = [
@@ -414,52 +505,20 @@ function createContactCard(contact, index) {
     let infoRowsHTML = '';
     fieldGroups.forEach(group => {
         infoRowsHTML += '<div class="info-row-group">';
-
-        // 第一个字段
-        const value1 = contact[group.field1] || '';
-        const isEmpty1 = !value1;
-        const isClickable1 = group.field1 === 'phone' && !isEmpty1;
-        infoRowsHTML += `
-            <div class="info-row">
-                <span class="info-icon">${fieldIcons[group.field1]}</span>
-                <span class="info-label">${fieldLabels[group.field1]}:</span>
-                <span class="info-value ${isEmpty1 ? 'empty' : ''} ${isClickable1 ? 'clickable' : ''}" ${isClickable1 ? `onclick="copyToClipboard('${value1}')"` : ''}>${isEmpty1 ? '（未填写）' : value1}</span>
-            </div>
-        `;
-
-        // 第二个字段
-        const value2 = contact[group.field2] || '';
-        const isEmpty2 = !value2;
-        const isClickable2 = group.field2 === 'phone' && !isEmpty2;
-        infoRowsHTML += `
-            <div class="info-row">
-                <span class="info-icon">${fieldIcons[group.field2]}</span>
-                <span class="info-label">${fieldLabels[group.field2]}:</span>
-                <span class="info-value ${isEmpty2 ? 'empty' : ''} ${isClickable2 ? 'clickable' : ''}" ${isClickable2 ? `onclick="copyToClipboard('${value2}')"` : ''}>${isEmpty2 ? '（未填写）' : value2}</span>
-            </div>
-        `;
-
+        infoRowsHTML += buildInfoRow(group.field1, contact[group.field1]);
+        infoRowsHTML += buildInfoRow(group.field2, contact[group.field2]);
         infoRowsHTML += '</div>';
     });
 
     // 邮箱单独一行（占满宽度）
-    const emailValue = contact.email || '';
-    const isEmailEmpty = !emailValue;
-    const isEmailClickable = !isEmailEmpty;
-    infoRowsHTML += `
-        <div class="info-row full-width">
-            <span class="info-icon">${fieldIcons['email']}</span>
-            <span class="info-label">${fieldLabels['email']}:</span>
-            <span class="info-value ${isEmailEmpty ? 'empty' : ''} ${isEmailClickable ? 'clickable' : ''}" ${isEmailClickable ? `onclick="copyToClipboard('${emailValue}')"` : ''}>${isEmailEmpty ? '（未填写）' : emailValue}</span>
-        </div>
-    `;
+    infoRowsHTML += buildInfoRow('email', contact.email, true);
 
     card.innerHTML = `
         <div class="card-header">
-            <div class="avatar">${avatarChar}</div>
+            <div class="avatar">${escapeHtml(avatarChar)}</div>
             <div class="name-info">
-                <div class="name">${contact.name || '（未填写）'}</div>
-                <div class="position">${contact.position || '（未填写职位）'}</div>
+                <div class="name">${escapeHtml(contact.name || '（未填写）')}</div>
+                <div class="position">${escapeHtml(contact.position || '（未填写职位）')}</div>
             </div>
         </div>
         ${infoRowsHTML}
@@ -554,5 +613,13 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 document.getElementById('searchInput').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         searchContacts();
+    }
+});
+
+// 卡片可复制字段的事件委托：点击带 data-copy 的元素即复制（替代原内联 onclick，杜绝注入）
+document.getElementById('resultsGrid').addEventListener('click', function(e) {
+    const target = e.target.closest('[data-copy]');
+    if (target) {
+        copyToClipboard(target.getAttribute('data-copy'));
     }
 });

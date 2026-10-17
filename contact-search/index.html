@@ -27,7 +27,8 @@
                 <p>请点击右上角的"导入Excel文件"按钮导入通讯录数据</p>
                 <div class="hint">
                     <strong>支持格式：</strong>.xlsx 或 .xls<br>
-                    <strong>必需字段：</strong>部门名称、姓名、邮箱、手机、短号、职位、性别、工号、入职时间、详细部门、公司
+                    <strong>必需字段：</strong>姓名、手机<br>
+                    <strong>可选字段：</strong>部门名称、邮箱、短号、职位、性别、工号、入职时间、详细部门、公司
                 </div>
             </div>
             <div class="results-grid" id="resultsGrid"></div>
@@ -42,12 +43,13 @@
                 <button class="modal-close" onclick="closeModal('duplicateModal')">&times;</button>
             </div>
             <div class="modal-body">
-                <p>导入过程中发现以下重复记录（工号或邮箱与已有数据重复）：</p>
+                <p>导入过程中发现以下重复记录（工号或邮箱与已有数据/本文件内其他记录重复）：</p>
                 <div class="duplicate-list" id="duplicateList"></div>
-                <p style="margin-top: 15px; color: #dc3545; font-weight: 600;">本次导入已中止，请手动处理源文件中的重复数据后重新导入。</p>
+                <p style="margin-top: 15px; color: #dc3545; font-weight: 600;">可选择跳过重复项并导入其余数据（导入会替换现有数据库），或放弃本次导入。</p>
             </div>
             <div class="modal-footer">
-                <button class="modal-btn primary" onclick="closeModal('duplicateModal')">我知道了</button>
+                <button class="modal-btn primary" onclick="importSkippingDuplicates()">跳过重复项并导入其余</button>
+                <button class="modal-btn" style="background:#6c757d; color:#fff;" onclick="closeModal('duplicateModal')">放弃本次导入</button>
             </div>
         </div>
     </div>

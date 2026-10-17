@@ -181,8 +181,6 @@
                 </div>
             </div>
         </div>
-
-        </div>
     </div>
 
     <script>
@@ -196,6 +194,13 @@
         document.addEventListener('DOMContentLoaded', function() {
             initFileUpload();
             initConfigListeners();
+
+            // 窗口尺寸变化时重绘图表（只注册一次，避免随文件导入不断叠加监听器）
+            window.addEventListener('resize', function() {
+                if (chart) {
+                    chart.resize();
+                }
+            });
         });
 
         // 文件上传模块
@@ -298,8 +303,23 @@
 
             reader.onload = function(e) {
                 try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
+                const bytes = new Uint8Array(e.target.result);
+                let workbook;
+
+                if (/\.csv$/i.test(file.name)) {
+                    // CSV：先按 UTF-8 解码，出现乱码占位符则回退 GBK（兼容中文 Excel/WPS 导出的 ANSI 编码）
+                    let csvText = new TextDecoder('utf-8').decode(bytes);
+                    if (csvText.includes('\uFFFD')) {
+                        try {
+                            csvText = new TextDecoder('gbk').decode(bytes);
+                        } catch (err) {
+                            console.warn('当前环境不支持 GBK 解码，按 UTF-8 处理:', err);
+                        }
+                    }
+                    workbook = XLSX.read(csvText, { type: 'string' });
+                } else {
+                    workbook = XLSX.read(bytes, { type: 'array' });
+                }
 
                     // 获取第一个工作表
                     const sheetName = workbook.SheetNames[0];
@@ -421,15 +441,12 @@
 
         // 初始化图表
         function initChart() {
+            // 已有实例先销毁，避免实例泄漏与重复初始化告警
+            if (chart) {
+                chart.dispose();
+            }
             const chartContainer = document.getElementById('chartContainer');
             chart = echarts.init(chartContainer);
-
-            // 响应窗口大小变化
-            window.addEventListener('resize', function() {
-                if (chart) {
-                    chart.resize();
-                }
-            });
 
             // 渲染初始图表
             updateChart();
@@ -469,13 +486,9 @@
             const baseOption = {
                 tooltip: {
                     trigger: chartType === 'pie' ? 'item' : 'axis',
-                    formatter: chartType === 'pie' 
-                        ? '{b}: {c} ({d}%)' 
+                    formatter: chartType === 'pie'
+                        ? '{b}: {c} ({d}%)'
                         : '{b}: {c}'
-                },
-                legend: {
-                    data: chartData.map(item => item.name),
-                    type: 'scroll'
                 },
                 toolbox: {
                     feature: {
@@ -491,6 +504,11 @@
             if (chartType === 'pie') {
                 return {
                     ...baseOption,
+                    // 饼图按类别展示图例
+                    legend: {
+                        data: chartData.map(item => item.name),
+                        type: 'scroll'
+                    },
                     series: [{
                         type: 'pie',
                         radius: '60%',
@@ -507,6 +525,10 @@
             } else {
                 return {
                     ...baseOption,
+                    // 柱状/折线图图例应显示系列名（Y 列名），而不是把每个 X 类别都列为图例项
+                    legend: {
+                        data: [yColumn]
+                    },
                     xAxis: {
                         type: 'category',
                         data: chartData.map(item => item.name),

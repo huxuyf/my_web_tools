@@ -44,8 +44,11 @@
                 // 如果现代API失败，使用传统方法
                 const textarea = document.getElementById('inputData');
                 textarea.select();
-                document.execCommand('copy');
-                showToast('已复制到剪贴板！');
+                if (document.execCommand('copy')) {
+                    showToast('已复制到剪贴板！');
+                } else {
+                    showToast('复制失败，请手动复制');
+                }
             });
         }
 
@@ -73,7 +76,9 @@
             
             const splitLineNumElement = document.getElementById('splitLineNum');
             if (splitLineNumElement) {
-                splitLineNum = parseInt(splitLineNumElement.value) || 1000;
+                const parsedSplit = parseInt(splitLineNumElement.value, 10);
+                // 防御 0、负数、NaN：非法输入一律回退默认值 1000
+                splitLineNum = (parsedSplit > 0) ? parsedSplit : 1000;
             }
 
             if (!inputText) {
@@ -118,35 +123,40 @@
                 }
             }
 
-            // 生成SQL
-            let sqlString = `CALL xyf.drop_table('${tableName}');\n`;
+            // 生成SQL（SET DEFINE OFF 规避 SQL*Plus 将 & 解析为替换变量，避免数据被篡改）
+            let sqlString = 'SET DEFINE OFF;\n';
+            sqlString += `CALL xyf.drop_table('${tableName}');\n`;
 
             // 建表
             sqlString += `CREATE TABLE ${tableName}\n`;
 
             let title = '';
-            const columnNames = new Set();
+            const usedNames = [];
 
             for (let i = 0; i < colNums; i++) {
                 // 第一行作为标题行，对列名进行处理
-                let columnName = tmp[0][i];
+                // 规范化为合法的 Oracle 标识符：替换非法字符、数字开头加前缀、限制 30 字符
+                let columnName = String(tmp[0][i]).trim()
+                    .replace(/[^\w\u4e00-\u9fa5#$]/g, '_')
+                    .replace(/^(\d)/, 'C_$1')
+                    .slice(0, 30);
 
-                if (columnName === '') {
+                if (columnName === '' || columnName === '_') {
                     columnName = 'COLUMN_NAME_' + (i + 1);
                 } else {
-                    // 检查是否有重复列名
+                    // 检查是否有重复列名（与已规范化的列名对比）
                     let count = 0;
-                    for (let k = 0; k < i; k++) {
-                        if (tmp[0][k] === columnName) {
+                    for (let k = 0; k < usedNames.length; k++) {
+                        if (usedNames[k] === columnName) {
                             count++;
                         }
                     }
                     if (count > 0) {
-                        columnName = columnName + '_' + count;
+                        columnName = (columnName + '_' + count).slice(0, 30);
                     }
                 }
 
-                columnNames.add(columnName);
+                usedNames.push(columnName);
 
                 // 计算列长度
                 let maxLength = 0;
@@ -155,6 +165,8 @@
                 }
                 let columnSize = Math.ceil((maxLength + 9) / 10) * 10;
                 columnSize = columnSize > 5 ? columnSize : 5;
+                // VARCHAR2 上限保护，避免超长数据生成非法 DDL
+                columnSize = Math.min(columnSize, 4000);
 
                 title += columnName + ' VARCHAR2(' + columnSize + '),';
             }
@@ -167,10 +179,10 @@
 
             for (let j = 0; j < rowNums; j++) {
                 for (let i = 0; i < colNums; i++) {
-                    // 处理字段内容中含有单引号、&符号的情况
+                    // 处理字段内容中含有单引号的情况（& 已由脚本头部的 SET DEFINE OFF 规避，不再删除数据字符）
                     let columnContent = '';
                     if (tmp[j + 1][i] !== undefined) {
-                        columnContent = tmp[j + 1][i].replace(/'/g, "''").replace(/&/g, "");
+                        columnContent = tmp[j + 1][i].replace(/'/g, "''");
                     }
                     columnString += '\'' + columnContent + '\',';
                 }

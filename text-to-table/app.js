@@ -3,8 +3,8 @@ const MAX_LINES = 1000;
 
 // 文本转表格核心函数
 function convertToTable(text, columns) {
-    // 1. 按行分割，保留空行
-    const lines = text.split('\n');
+    // 1. 按行分割，保留空行（兼容 Windows CRLF 行尾，避免单元格残留 \r）
+    const lines = text.split(/\r?\n/);
 
     // 2. 限制最大行数
     const validLines = lines.slice(0, MAX_LINES);
@@ -54,7 +54,7 @@ function convertText() {
     }
 
     // 检查行数是否超过限制
-    const lines = inputText.split('\n');
+    const lines = inputText.split(/\r?\n/);
     if (lines.length > MAX_LINES) {
         showToast(`输入超过${MAX_LINES}行，仅处理前${MAX_LINES}行`);
     }
@@ -123,16 +123,20 @@ function clearAll() {
     showToast('已清空所有内容');
 }
 
-// 显示提示信息
+// 显示提示信息（保存定时器引用，避免连续提示时前一轮定时器提前隐藏后一个 toast）
+let toastTimer = null;
+let toastFadeTimer = null;
 function showToast(message, duration = 2000) {
     const toast = document.getElementById('toast');
     toast.textContent = message;
     toast.style.display = 'block';
     toast.classList.remove('fade-out');
 
-    setTimeout(() => {
+    clearTimeout(toastTimer);
+    clearTimeout(toastFadeTimer);
+    toastTimer = setTimeout(() => {
         toast.classList.add('fade-out');
-        setTimeout(() => {
+        toastFadeTimer = setTimeout(() => {
             toast.style.display = 'none';
         }, 300);
     }, duration);
